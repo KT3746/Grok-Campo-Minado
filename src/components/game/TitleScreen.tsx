@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { MaskFace } from "@/components/game/MaskFace";
 import { dailyKey, formatTime } from "@/game/engine";
 import { PRESETS, type DifficultyId, type Stats } from "@/game/types";
-import { cn } from "@/lib/utils";
+import { cn, publicUrl } from "@/lib/utils";
 
 interface Props {
   stats: Stats;
@@ -54,7 +54,7 @@ export function TitleScreen({ stats, hasSave, saveLabel, onStart, onContinue, on
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-bg text-fg">
       <img
-        src="/atmosphere.jpg"
+        src={publicUrl("atmosphere.jpg")}
         alt=""
         className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
       />

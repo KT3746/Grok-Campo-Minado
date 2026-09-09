@@ -8,6 +8,9 @@ Feito com Grok.
 
 ## Jogar
 
+- **GitHub Pages:** https://kt3746.github.io/Grok-Campo-Minado/
+- **Grok:** publique no App Builder para ganhar o endereço `grok.me`
+
 - **Fácil** 9×9 · 10 minas
 - **Médio** 16×16 · 40 minas
 - **Expert** 30×16 · 99 minas
@@ -26,3 +29,9 @@ npm run dev
 ```
 
 Requer Node 22.
+
+Build estático (GitHub Pages):
+
+```bash
+npm run build:pages
+```

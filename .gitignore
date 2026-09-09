@@ -1,6 +1,7 @@
 node_modules/
 .vercel/
 dist/
+.pages-export/
 screenshots/
 artifacts/
 .grok/
