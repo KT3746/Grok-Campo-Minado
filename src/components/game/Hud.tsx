@@ -1,6 +1,7 @@
-import { Flag, Settings, Check, X } from "lucide-react";
+import { Flag, Settings } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { MaskFace } from "@/components/game/MaskFace";
 import { elapsedMs, formatTime, remainingMines } from "@/game/engine";
 import type { Board } from "@/game/types";
 import { cn } from "@/lib/utils";
@@ -12,12 +13,6 @@ interface Props {
   onFlagMode: (v: boolean) => void;
   onRestart: () => void;
   onSettings: () => void;
-}
-
-function StatusMark({ board }: { board: Board }) {
-  if (board.status === "won") return <Check className="size-5" strokeWidth={1.75} />;
-  if (board.status === "lost") return <X className="size-5" strokeWidth={1.75} />;
-  return <span className="block size-2.5 rotate-45 rounded-[2px] bg-accent" />;
 }
 
 export function Hud({ board, flagMode, coarse, onFlagMode, onRestart, onSettings }: Props) {
@@ -36,6 +31,7 @@ export function Hud({ board, flagMode, coarse, onFlagMode, onRestart, onSettings
   }, [board]);
 
   const mines = remainingMines(board);
+  const mood = board.status === "won" ? "win" : board.status === "lost" ? "lose" : "play";
 
   return (
     <header className="relative z-10 grid shrink-0 grid-cols-3 items-center gap-2 px-3 pt-1 pb-2">
@@ -57,7 +53,7 @@ export function Hud({ board, flagMode, coarse, onFlagMode, onRestart, onSettings
             board.status === "lost" && "border-danger/40",
           )}
         >
-          <StatusMark board={board} />
+          <MaskFace mood={mood} size={34} />
         </Button>
       </div>
 

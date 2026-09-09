@@ -11,10 +11,10 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
-      { name: "theme-color", content: "#0b0c0e" },
+      { name: "theme-color", content: "#0e0c0b" },
       {
         name: "description",
-        content: "VEIL — campo minado preciso, com tabuleiro diário, estatísticas e modo personalizado.",
+        content: "VEIL — campo minado com ginga de palco, tabuleiro diário e modo personalizado.",
       },
     ],
     links: [

@@ -1,6 +1,8 @@
 # VEIL — Campo minado
 
-Campo minado preciso, com tabuleiro diário, modo personalizado e estatísticas locais.
+Campo minado com ginga de palco: tabuleiro diário, modo personalizado e estatísticas locais.
+
+Sorrisos no palco. Minas no chão.
 
 Feito com Grok.
 

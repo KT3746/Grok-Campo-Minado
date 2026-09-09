@@ -1,5 +1,6 @@
 import { Flag, BarChart3, Settings, HelpCircle, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MaskFace } from "@/components/game/MaskFace";
 import { dailyKey, formatTime } from "@/game/engine";
 import { PRESETS, type DifficultyId, type Stats } from "@/game/types";
 import { cn } from "@/lib/utils";
@@ -11,24 +12,6 @@ interface Props {
   onStart: (id: DifficultyId) => void;
   onContinue: () => void;
   onOpen: (id: "settings" | "stats" | "howto" | "custom") => void;
-}
-
-function MiniMark() {
-  const cells = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-  return (
-    <div className="grid grid-cols-3 gap-[3px]" aria-hidden="true">
-      {cells.map((i) => (
-        <div
-          key={i}
-          className={cn(
-            "size-2.5 rounded-[3px]",
-            i === 4 ? "bg-bg shadow-inner" : "bg-accent/55",
-            i === 4 && "outline outline-1 outline-accent/30",
-          )}
-        />
-      ))}
-    </div>
-  );
 }
 
 function DiffCard({
@@ -65,7 +48,7 @@ function DiffCard({
 }
 
 export function TitleScreen({ stats, hasSave, saveLabel, onStart, onContinue, onOpen }: Props) {
-  const daily = stats.lastDaily === dailyKey() ? stats.daily : stats.daily;
+  const daily = stats.daily;
   const dailyDone = stats.lastDaily === dailyKey() && stats.daily.won > 0;
 
   return (
@@ -73,18 +56,21 @@ export function TitleScreen({ stats, hasSave, saveLabel, onStart, onContinue, on
       <img
         src="/atmosphere.jpg"
         alt=""
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-45"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/40 via-bg/75 to-bg" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/35 via-bg/78 to-bg" />
+      <div className="veil-spot" />
 
       <div className="relative mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-5 py-10 stagger-in">
-        <div className="mb-8 flex flex-col items-center gap-5 text-center">
-          <MiniMark />
+        <div className="mb-8 flex flex-col items-center gap-4 text-center">
+          <MaskFace mood="idle" size={88} />
           <div>
             <h1 className="font-display text-6xl font-semibold tracking-[-0.04em] text-fg sm:text-7xl">VEIL</h1>
             <p className="mt-2 text-sm uppercase tracking-[0.28em] text-muted">Campo minado</p>
           </div>
-          <p className="max-w-[22rem] text-sm leading-relaxed text-muted">Revele o campo. Não toque no vazio.</p>
+          <p className="max-w-[22rem] text-sm leading-relaxed text-muted">
+            Sorrisos no palco. Minas no chão.
+          </p>
         </div>
 
         {hasSave ? (
@@ -126,7 +112,7 @@ export function TitleScreen({ stats, hasSave, saveLabel, onStart, onContinue, on
           <DiffCard
             testId="btn-daily"
             title="Diário"
-            meta={dailyDone ? "concluído hoje" : "16 × 16 · um tabuleiro"}
+            meta={dailyDone ? "já foi hoje" : "16 × 16 · um tabuleiro"}
             best={daily.bestMs != null ? formatTime(daily.bestMs) : null}
             onClick={() => onStart("daily")}
             featured
@@ -160,7 +146,7 @@ export function TitleScreen({ stats, hasSave, saveLabel, onStart, onContinue, on
 
       <p className="relative px-5 pb-[max(4.5rem,calc(env(safe-area-inset-bottom)+3.5rem))] text-center text-[11px] tracking-wide text-subtle">
         <Flag className="mr-1 inline size-3 opacity-70" strokeWidth={1.75} />
-        Primeiro toque sempre seguro
+        Primeiro toque é cortesia da casa
       </p>
     </div>
   );

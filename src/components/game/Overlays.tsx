@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MaskFace, resultQuip } from "@/components/game/MaskFace";
 import { dailyKey, formatTime } from "@/game/engine";
 import { useGame } from "@/game/store";
 import type { DiffStats, OverlayId } from "@/game/types";
@@ -181,14 +182,14 @@ function StatsBody() {
 function HowToBody() {
   return (
     <div className="space-y-3 text-sm leading-relaxed text-muted">
-      <p>Cada número mostra quantas minas existem nas oito casas vizinhas.</p>
-      <p>Toque para revelar. Segure — ou clique com o direito — para marcar uma bandeira.</p>
-      <p>O primeiro toque nunca cai em mina. Números zero abrem o campo em cascata.</p>
+      <p>Cada número é um recado das oito casas ao lado.</p>
+      <p>Toque revela. Segure — ou clique com o direito — para cravar uma bandeira.</p>
+      <p>O primeiro toque é cortesia da casa: nunca cai em mina. Zero abre o salão inteiro.</p>
       <p>
-        Em um número, toque de novo (ou clique do meio) para abrir os vizinhos, se as bandeiras
-        estiverem certas.
+        Num número, toque de novo (ou clique do meio) se as bandeiras baterem. Errou o recado, a
+        casa cai.
       </p>
-      <p className="text-subtle">Setas movem o cursor. Espaço revela. F marca. C abre vizinhos.</p>
+      <p className="text-subtle">Setas movem. Espaço revela. F marca. C abre vizinhos.</p>
     </div>
   );
 }
@@ -253,8 +254,12 @@ function ResultBody() {
   if (!last) return null;
   return (
     <div>
+      <div className="mb-3 flex justify-center">
+        <MaskFace mood={last.won ? "win" : "lose"} size={64} />
+      </div>
       <p className="digital text-3xl text-fg">{formatTime(last.timeMs)}</p>
-      {last.isBest ? <p className="mt-1 text-sm text-success">Novo recorde</p> : null}
+      <p className="mt-1 text-sm text-muted">{resultQuip(last.won, last.timeMs)}</p>
+      {last.isBest ? <p className="mt-1 text-sm text-success">Esse tempo merece palmas.</p> : null}
       <div className="mt-5 flex gap-2">
         <Button data-testid="btn-again" variant="primary" className="flex-1" onClick={restart}>
           De novo
@@ -316,7 +321,7 @@ export function Overlays() {
     const won = last?.won;
     return (
       <Shell
-        title={won ? "Campo limpo" : "Campo perdido"}
+        title={won ? "Noite perfeita" : "O palco desabou"}
         onClose={() => setOverlay(null)}
       >
         <ResultBody />
@@ -328,7 +333,7 @@ export function Overlays() {
     return (
       <Shell title="Reiniciar" onClose={() => setOverlay(null)}>
         <Confirm
-          text="Começar um novo campo neste tamanho?"
+          text="Outro ato neste tamanho?"
           confirm="Reiniciar"
           onYes={restart}
           onNo={() => setOverlay(null)}

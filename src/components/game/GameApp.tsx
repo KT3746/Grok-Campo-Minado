@@ -139,7 +139,7 @@ export function GameApp() {
       <p className="px-4 pb-[max(4.5rem,calc(env(safe-area-inset-bottom)+3.5rem))] pt-1 text-center text-[11px] text-subtle">
         {coarse
           ? flagMode
-            ? "Toque marca bandeira · segure para revelar"
+            ? "Toque marca · segure para revelar"
             : "Toque revela · segure para bandeira"
           : "Direito marca · meio abre vizinhos · F bandeira"}
       </p>

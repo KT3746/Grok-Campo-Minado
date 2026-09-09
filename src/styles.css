@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0b0c0e;
-  --color-surface: #141518;
-  --color-elevated: #1c1e22;
-  --color-fg: #f0efeb;
-  --color-muted: #8e8f94;
-  --color-subtle: #6a6b70;
-  --color-accent: #c9cdc8;
-  --color-accent-fg: #0b0c0e;
+  --color-bg: #0e0c0b;
+  --color-surface: #171412;
+  --color-elevated: #201c18;
+  --color-fg: #f3eee6;
+  --color-muted: #9a9086;
+  --color-subtle: #6e675f;
+  --color-accent: #d7c4a0;
+  --color-accent-fg: #16110c;
   --color-danger: #c45c4a;
-  --color-success: #6f9e7e;
-  --color-border: #2a2c30;
+  --color-success: #7aa484;
+  --color-border: #2e2924;
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Syne", "Outfit", ui-sans-serif, sans-serif;
+  --font-display: "Syne", "Outfit", ui-sans-serif, system-ui, sans-serif;
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -112,6 +112,21 @@
     letter-spacing: 0.04em;
     line-height: 1.1;
   }
+
+  .veil-spot {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 70% 42% at 50% 12%,
+      color-mix(in oklab, var(--color-accent) 16%, transparent),
+      transparent 72%
+    );
+  }
+
+  .mask-float {
+    animation: mask-float 4.2s ease-in-out infinite;
+  }
 }
 
 @keyframes veil-enter {
@@ -138,13 +153,24 @@
   }
 }
 
+@keyframes mask-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 .modal-in {
   animation: veil-modal 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stagger-in > *,
-  .modal-in {
+  .modal-in,
+  .mask-float {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
