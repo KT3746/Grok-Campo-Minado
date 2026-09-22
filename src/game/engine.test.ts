@@ -181,6 +181,8 @@ describe("engine", () => {
     assert.equal(formatTime(100), "0:00.1");
     assert.equal(formatTime(1000), "0:01.0");
     assert.equal(formatTime(61000), "1:01.0");
+    assert.equal(formatTime(Number.NaN), "0:00.0");
+    assert.equal(formatTime(Number.POSITIVE_INFINITY), "0:00.0");
   });
 
   it("cloneBoard deep-copies cells", () => {
@@ -198,5 +200,48 @@ describe("engine", () => {
     assert.equal(b.cells[safe]!.revealed, false);
     assert.equal(out.board.cells[safe]!.revealed, true);
     assert.notEqual(out.board, b);
+  });
+
+  it("flagging does not start the timer", () => {
+    const b = createBoard(9, 9, 10, 3, "easy");
+    const a = toggleFlag(b, 0, 50, false);
+    assert.equal(a.board.status, "ready");
+    assert.equal(a.board.startMs, null);
+    assert.equal(elapsedMs(a.board, 500), 0);
+  });
+
+  it("chord on a misflag opens remaining safe neighbors then loses", () => {
+    let b = placeMines(createBoard(9, 9, 10, 11, "easy"), 40);
+    b = { ...b, status: "playing", startMs: 1, minesPlaced: true };
+    const n = b.cells.findIndex((c) => !c.mine && c.adjacent === 1);
+    let board = revealCell(b, n, 2).board;
+    const neigh = neighbors(9, 9, n);
+    const safe = neigh.find((i) => !board.cells[i]!.mine && !board.cells[i]!.revealed);
+    const mine = neigh.find((i) => board.cells[i]!.mine);
+    if (safe == null || mine == null) return;
+    board = toggleFlag(board, safe, 3, false).board;
+    const out = chordCell(board, n, 4);
+    assert.equal(out.kind, "boom");
+    assert.equal(out.board.status, "lost");
+    assert.equal(out.board.cells[mine]!.revealed, true);
+    for (const i of neigh) {
+      if (i === safe) continue;
+      if (!out.board.cells[i]!.mine && out.board.cells[i]!.flag !== 1) {
+        assert.equal(out.board.cells[i]!.revealed, true, `safe neighbor ${i} should open`);
+      }
+    }
+  });
+
+  it("createBoard never fills every cell with mines", () => {
+    const b = createBoard(9, 9, 999, 1, "custom");
+    assert.equal(b.mines, 80);
+    assert.equal(b.cells.length, 81);
+  });
+
+  it("formatTime and remainingMines survive NaN input", () => {
+    const b = createBoard(9, 9, 10, 1, "easy");
+    b.flagCount = Number.NaN;
+    assert.equal(remainingMines(b), 0);
+    assert.equal(elapsedMs({ ...b, startMs: Number.NaN }, 100), 0);
   });
 });

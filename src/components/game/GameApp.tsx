@@ -50,12 +50,21 @@ export function GameApp() {
       }
     };
     document.addEventListener("visibilitychange", onVis);
+    const onPageHide = () => {
+      const st = useGame.getState();
+      if (st.board && st.screen === "play") {
+        useGame.setState({ board: pauseBoard(st.board, performance.now()) });
+      }
+      useGame.getState().persist();
+    };
+    window.addEventListener("pagehide", onPageHide);
     const unlock = () => unlockAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
       mq.removeEventListener("change", apply);
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", onPageHide);
       delete w.__veil;
     };
   }, [hydrate, persist]);

@@ -315,8 +315,13 @@ export const useGame = create<GameState>((set, get) => ({
 
   setCustom: (p) => {
     const custom = { ...get().custom, ...p };
+    const cols = Number.isFinite(custom.cols) ? Math.round(custom.cols) : 12;
+    const rows = Number.isFinite(custom.rows) ? Math.round(custom.rows) : 12;
+    custom.cols = Math.max(5, Math.min(30, cols));
+    custom.rows = Math.max(5, Math.min(24, rows));
     const maxMines = Math.max(1, custom.cols * custom.rows - 9);
-    custom.mines = Math.max(1, Math.min(custom.mines, maxMines));
+    const mines = Number.isFinite(custom.mines) ? Math.round(custom.mines) : 1;
+    custom.mines = Math.max(1, Math.min(mines, maxMines));
     set({ custom });
     get().persist();
   },

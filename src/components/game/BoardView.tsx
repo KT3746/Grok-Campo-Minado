@@ -167,13 +167,23 @@ export function BoardView() {
     const onDown = (e: PointerEvent) => {
       if (useGame.getState().overlay) return;
       if (e.pointerType !== "mouse") e.preventDefault();
+      if (e.button === 1) e.preventDefault();
       const p = localPoint(e);
       pointers.current.set(e.pointerId, p);
+      try {
+        hit.setPointerCapture(e.pointerId);
+      } catch {
+        /* untrusted or already released */
+      }
 
       if (pointers.current.size === 2) {
         const pts = [...pointers.current.values()];
         const d = Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
         pinch.current = { dist: d, zoom: camRef.current.zoom };
+        if (press.current) {
+          press.current.moved = true;
+          press.current.panned = true;
+        }
         clearLong();
         return;
       }
@@ -272,6 +282,13 @@ export function BoardView() {
 
     const endPress = (e: PointerEvent, cancelled: boolean) => {
       pointers.current.delete(e.pointerId);
+      if (hit.hasPointerCapture?.(e.pointerId)) {
+        try {
+          hit.releasePointerCapture(e.pointerId);
+        } catch {
+          /* already released */
+        }
+      }
       if (pointers.current.size < 2) pinch.current = null;
       const pr = press.current;
       viewRef.current.press = -1;
@@ -279,15 +296,17 @@ export function BoardView() {
       clearLong();
       if (!pr || pr.id !== e.pointerId) return;
       press.current = null;
-      if (pr.long || pr.panned || useGame.getState().overlay) return;
+      if (pr.long || pr.panned || pr.moved || useGame.getState().overlay) return;
       if (e.button === 1 || e.button === 2) return;
 
       const p = localPoint(e);
       const dist = Math.hypot(p.x - pr.x, p.y - pr.y);
       const slop = slopFor(pr.pointerType);
       // Android WebViews often fire pointercancel instead of pointerup.
-      if (cancelled && dist > slop * 2) return;
-      if (!cancelled && pr.moved && dist > slop * 3) return;
+      // Treat a cancel after the finger moved as a no-op so a half long-press
+      // does not flip into a reveal.
+      if (cancelled && dist > slop) return;
+      if (dist > slop * 2) return;
       const index = pr.index ?? indexAt(p.x, p.y);
       if (index == null) return;
       actTap(index);
@@ -307,6 +326,7 @@ export function BoardView() {
     };
 
     const onContext = (e: Event) => e.preventDefault();
+    const onAux = (e: Event) => e.preventDefault();
 
     const opts: AddEventListenerOptions = { capture: true, passive: false };
     hit.addEventListener("pointerdown", onDown, opts);
@@ -315,6 +335,7 @@ export function BoardView() {
     hit.addEventListener("pointercancel", onCancel, opts);
     hit.addEventListener("click", onClick, opts);
     hit.addEventListener("contextmenu", onContext, opts);
+    hit.addEventListener("auxclick", onAux, opts);
 
     return () => {
       hit.removeEventListener("pointerdown", onDown, opts);
@@ -323,6 +344,7 @@ export function BoardView() {
       hit.removeEventListener("pointercancel", onCancel, opts);
       hit.removeEventListener("click", onClick, opts);
       hit.removeEventListener("contextmenu", onContext, opts);
+      hit.removeEventListener("auxclick", onAux, opts);
       clearLong();
     };
   }, []);

@@ -58,6 +58,11 @@ function emptyCell(): Cell {
   return { mine: false, revealed: false, flag: 0, adjacent: 0 };
 }
 
+function finiteInt(n: unknown, fallback: number): number {
+  const v = typeof n === "number" ? n : Number(n);
+  return Number.isFinite(v) ? Math.trunc(v) : fallback;
+}
+
 export function createBoard(
   cols: number,
   rows: number,
@@ -65,11 +70,14 @@ export function createBoard(
   seed: number,
   difficulty: DifficultyId,
 ): Board {
-  const n = cols * rows;
-  const safeMines = Math.max(1, Math.min(mines, n - 1));
+  const c = Math.max(1, finiteInt(cols, 9));
+  const r = Math.max(1, finiteInt(rows, 9));
+  const n = c * r;
+  // Always leave at least one safe cell so the first click can never be a mine.
+  const safeMines = Math.max(0, Math.min(finiteInt(mines, 1), n - 1));
   return {
-    cols,
-    rows,
+    cols: c,
+    rows: r,
     mines: safeMines,
     cells: Array.from({ length: n }, emptyCell),
     status: "ready",
@@ -79,7 +87,7 @@ export function createBoard(
     startMs: null,
     endMs: null,
     exploded: null,
-    seed,
+    seed: finiteInt(seed, 1) >>> 0,
     firstIndex: null,
     difficulty,
   };
@@ -96,6 +104,35 @@ function exclusionSet(b: Board, safeIndex: number): Set<number> {
   return new Set([safeIndex]);
 }
 
+export function refreshAdjacent(b: Board): void {
+  for (let i = 0; i < b.cells.length; i++) {
+    const c = b.cells[i]!;
+    if (c.mine) {
+      c.adjacent = 0;
+      continue;
+    }
+    let adj = 0;
+    for (const n of neighbors(b.cols, b.rows, i)) {
+      if (b.cells[n]!.mine) adj++;
+    }
+    c.adjacent = adj;
+  }
+}
+
+export function recomputeCounts(b: Board): void {
+  let revealed = 0;
+  let flags = 0;
+  let mines = 0;
+  for (const c of b.cells) {
+    if (c.mine) mines++;
+    if (c.revealed) revealed++;
+    if (c.flag === 1) flags++;
+  }
+  b.revealedCount = revealed;
+  b.flagCount = flags;
+  if (b.minesPlaced && mines > 0) b.mines = mines;
+}
+
 export function placeMines(board: Board, safeIndex: number): Board {
   const b = cloneBoard(board);
   const rng = makeRng(b.seed ^ ((safeIndex + 1) * 2654435761));
@@ -110,21 +147,13 @@ export function placeMines(board: Board, safeIndex: number): Board {
     pool[i] = pool[j]!;
     pool[j] = tmp;
   }
-  for (let k = 0; k < b.mines && k < pool.length; k++) {
+  const want = Math.min(b.mines, pool.length);
+  for (let k = 0; k < want; k++) {
     const i = pool[k]!;
     b.cells[i]!.mine = true;
   }
-  for (let i = 0; i < b.cells.length; i++) {
-    if (b.cells[i]!.mine) {
-      b.cells[i]!.adjacent = 0;
-      continue;
-    }
-    let adj = 0;
-    for (const n of neighbors(b.cols, b.rows, i)) {
-      if (b.cells[n]!.mine) adj++;
-    }
-    b.cells[i]!.adjacent = adj;
-  }
+  b.mines = want;
+  refreshAdjacent(b);
   b.minesPlaced = true;
   return b;
 }
@@ -133,6 +162,8 @@ function beginPlay(b: Board, index: number, now: number): Board {
   let next = b.minesPlaced ? cloneBoard(b) : placeMines(b, index);
   if (next.status === "ready") {
     next = { ...next, status: "playing", startMs: now, firstIndex: index };
+  } else if (next.firstIndex == null) {
+    next = { ...next, firstIndex: index, startMs: next.startMs ?? now };
   }
   return next;
 }
@@ -171,14 +202,21 @@ function floodReveal(b: Board, start: number): number[] {
 }
 
 function checkWin(b: Board): boolean {
-  return b.revealedCount >= b.cols * b.rows - b.mines;
+  const safe = b.cols * b.rows - b.mines;
+  return safe > 0 && b.revealedCount >= safe;
 }
 
 function autoFlagMines(b: Board): void {
   for (const c of b.cells) {
-    if (c.mine && c.flag !== 1) {
-      c.flag = 1;
-      b.flagCount++;
+    if (c.mine) {
+      if (c.flag !== 1) {
+        c.flag = 1;
+        b.flagCount++;
+      }
+    } else if (c.flag === 1) {
+      // Drop leftover flags on safe cells so remaining reads 0 on a win.
+      c.flag = 0;
+      b.flagCount--;
     }
   }
 }
@@ -187,7 +225,7 @@ export function revealCell(board: Board, index: number, now: number): Outcome {
   if (board.status === "won" || board.status === "lost") {
     return { board, revealed: [], kind: "noop" };
   }
-  if (index < 0 || index >= board.cells.length) {
+  if (index < 0 || index >= board.cells.length || !Number.isInteger(index)) {
     return { board, revealed: [], kind: "noop" };
   }
   const target = board.cells[index]!;
@@ -215,32 +253,36 @@ export function revealCell(board: Board, index: number, now: number): Outcome {
 export function toggleFlag(
   board: Board,
   index: number,
-  now: number,
+  _now: number,
   allowQuestion: boolean,
 ): Outcome {
   if (board.status === "won" || board.status === "lost") {
+    return { board, revealed: [], kind: "noop" };
+  }
+  if (index < 0 || index >= board.cells.length || !Number.isInteger(index)) {
     return { board, revealed: [], kind: "noop" };
   }
   const cell = board.cells[index];
   if (!cell || cell.revealed) return { board, revealed: [], kind: "noop" };
 
   const next = cloneBoard(board);
-  if (next.status === "ready") {
-    next.status = "playing";
-    next.startMs = now;
-  }
+  // Flagging before the first reveal should not start the clock — classic behavior.
   const c = next.cells[index]!;
   const cycle = allowQuestion ? 3 : 2;
-  const prev = c.flag;
-  c.flag = ((c.flag + 1) % cycle) as 0 | 1 | 2;
+  const prev = c.flag === 1 || c.flag === 2 ? c.flag : 0;
+  c.flag = ((prev + 1) % cycle) as 0 | 1 | 2;
   if (prev === 1) next.flagCount--;
   if (c.flag === 1) next.flagCount++;
+  if (next.flagCount < 0) next.flagCount = 0;
   const kind: OutcomeKind = c.flag === 1 ? "flag" : c.flag === 2 ? "question" : "unflag";
   return { board: next, revealed: [], kind };
 }
 
 export function chordCell(board: Board, index: number, now: number): Outcome {
   if (board.status !== "playing" && board.status !== "ready") {
+    return { board, revealed: [], kind: "noop" };
+  }
+  if (index < 0 || index >= board.cells.length || !Number.isInteger(index)) {
     return { board, revealed: [], kind: "noop" };
   }
   const cell = board.cells[index];
@@ -259,16 +301,25 @@ export function chordCell(board: Board, index: number, now: number): Outcome {
   if (flags !== cell.adjacent) return { board, revealed: [], kind: "blocked" };
 
   let b = cloneBoard(board);
+  if (b.status === "ready") {
+    b = beginPlay(b, index, now);
+  }
   const revealed: number[] = [];
+  const hits: number[] = [];
   for (const n of neigh) {
     const c = b.cells[n]!;
     if (c.revealed || c.flag === 1) continue;
     if (c.mine) {
-      b = finish(b, "lost", n, now);
-      return { board: b, revealed: [n], kind: "boom" };
+      c.revealed = true;
+      hits.push(n);
+      continue;
     }
     const more = floodReveal(b, n);
     revealed.push(...more);
+  }
+  if (hits.length) {
+    b = finish(b, "lost", hits[0]!, now);
+    return { board: b, revealed: [...hits, ...revealed], kind: "boom" };
   }
   if (checkWin(b)) {
     autoFlagMines(b);
@@ -279,28 +330,32 @@ export function chordCell(board: Board, index: number, now: number): Outcome {
 }
 
 export function remainingMines(b: Board): number {
-  return b.mines - b.flagCount;
+  const left = b.mines - b.flagCount;
+  return Number.isFinite(left) ? left : 0;
 }
 
 export function elapsedMs(b: Board, now: number): number {
-  if (b.startMs == null) return 0;
-  const end = b.endMs ?? now;
+  if (b.startMs == null || !Number.isFinite(b.startMs)) return 0;
+  const end = b.endMs != null && Number.isFinite(b.endMs) ? b.endMs : now;
+  if (!Number.isFinite(end)) return 0;
   return Math.max(0, end - b.startMs);
 }
 
 export function pauseBoard(b: Board, now: number): Board {
   if (b.status !== "playing" || b.startMs == null || b.endMs != null) return b;
-  return { ...b, endMs: now };
+  const t = Number.isFinite(now) ? now : 0;
+  return { ...b, endMs: t };
 }
 
 export function resumeBoard(b: Board, now: number): Board {
   if (b.status !== "playing" || b.startMs == null || b.endMs == null) return b;
   const elapsed = b.endMs - b.startMs;
+  if (!Number.isFinite(elapsed) || !Number.isFinite(now)) return { ...b, endMs: null };
   return { ...b, startMs: now - elapsed, endMs: null };
 }
 
 export function formatTime(ms: number): string {
-  const clamped = Math.max(0, Math.floor(ms));
+  const clamped = Math.max(0, Math.floor(Number.isFinite(ms) ? ms : 0));
   const totalTenths = Math.floor(clamped / 100);
   const tenths = totalTenths % 10;
   const totalSec = Math.floor(totalTenths / 10);
